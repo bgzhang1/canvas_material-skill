@@ -1,4 +1,4 @@
-# Canvas Material Sync
+# canvas_material-skill
 
 一个用于同步 Canvas 资料的 skill / 脚本集合。
 
@@ -25,7 +25,7 @@
 ## 仓库结构
 
 ```text
-canvas-material-sync/
+canvas_material-skill/
 ├─ SKILL.md
 ├─ README.md
 ├─ rules.json
