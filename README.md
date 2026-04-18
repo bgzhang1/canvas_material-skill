@@ -4,23 +4,45 @@
 
 它会从 Canvas 课程中抓取课件与资料链接，按课程与类别整理到本地，并支持首次全量同步、后续增量同步、可选 PDF 转换以及定时任务。
 
-## 功能
+## 主要功能
 
-- 首次全量扫描 Canvas 资料
-- 按上次同步时间做增量更新
-- 扫描多个资料来源
-  - course files
-  - announcements
-  - assignments
-  - syllabus
-  - front page
-  - pages
-  - discussions
-  - modules
-- 自动分类到如 `lecture` / `tutorial` 等目录
-- 可选把 `docx` / `pptx` / `ipynb` 转成 PDF
-- 支持 Windows Task Scheduler / cron 风格定时执行
-- 内置 Canvas REST API 调用说明
+> **一句话概括：**  
+> 这份 skill 可以帮你把 **Canvas 里的课件与资料自动抓取、分类整理、持续增量更新，并支持定时执行**。
+
+- **首次全量同步**
+  - 第一次运行时，自动扫描并下载当前可见的 Canvas 资料。
+
+- **增量更新**
+  - 以后只检查并同步 **上次更新之后的新动作 / 新资料**，避免重复处理。
+
+- **多来源扫描**
+  - 不只抓 course files，还会扫描：
+    - `course files`
+    - `announcements`
+    - `assignments`
+    - `syllabus`
+    - `front page`
+    - `pages`
+    - `discussions`
+    - `modules`
+
+- **自动分类整理**
+  - 自动把资料归类到如 `lecture` / `tutorial` 等文件夹中。
+
+- **可选 PDF 转换**
+  - 支持将 `docx` / `pptx` / `ipynb` 等资料按需转换成 PDF。
+
+- **定时同步**
+  - 支持：
+    - **每隔 N 分钟**
+    - **每天固定时间**
+    - **每周固定时间**
+
+- **可被 AI 客户端直接调用**
+  - 可由支持 skill / 仓库安装的 AI 客户端一句话安装并执行。
+
+- **内置 Canvas API 说明**
+  - 仓库内已经附带通用的 Canvas REST API 调用方法，便于继续扩展。
 
 ## 安装
 
