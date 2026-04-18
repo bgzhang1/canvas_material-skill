@@ -11,13 +11,15 @@ Use this skill when the user wants ongoing Canvas material monitoring and automa
 
 Before running initial setup, always ask the user these questions in plain language:
 
-1. 是否开启 PDF 转换
-2. 是否开启定时执行
-3. 如果开启定时执行，请直接说明你想怎么定时执行（例如：`每 30 分钟`、`每天 09:00`、`每周一和周三 09:00`）
-4. 资料要分成哪些文件夹分类（默认 `lecture` 和 `tutorial`）
+1. Canvas Base URL 是什么
+2. Canvas API Key / Access Token 是什么
+3. 是否开启 PDF 转换
+4. 是否开启定时执行
+5. 如果开启定时执行，请直接说明你想怎么定时执行（例如：`每 30 分钟`、`每天 09:00`、`每周一和周三 09:00`）
+6. 资料要分成哪些文件夹分类（默认 `lecture` 和 `tutorial`）
 
-Questions 1, 2, and 4 are mandatory for the first setup and must not be skipped.
-Question 3 is mandatory when and only when the user enables scheduled execution.
+Questions 1, 2, 3, 4, and 6 are mandatory for the first setup and must not be skipped.
+Question 5 is mandatory when and only when the user enables scheduled execution.
 Do not silently infer them and do not silently accept defaults on the user's behalf.
 Even if the surrounding client mode prefers making reasonable assumptions, this skill overrides that behavior for these required questions.
 You may suggest defaults, but you must still ask and wait for the user's answer before running `setup`.
@@ -33,6 +35,15 @@ If the user gives an ambiguous schedule description, ask one short follow-up que
 If output directory or target courses are not already clear from context, make a reasonable default:
 - output root: a `canvas_materials` directory in the current working directory
 - courses: all currently active Canvas courses visible to the token
+
+For question 1:
+- prefer the exact site root URL, e.g. `https://cityu-dg.instructure.com`
+- do not append `/api/v1`
+
+For question 2:
+- treat the token as sensitive
+- do not echo it back unnecessarily in the reply
+- save it only into the local generated config for later sync reuse
 
 ## What the bundled script supports
 
@@ -129,12 +140,19 @@ python scripts/canvas_material_sync.py run --config C:/path/to/_canvas_material_
 - if first full sync is not complete -> run full sync
 - otherwise -> run incremental sync since the last full/incremental update timestamp
 
-## Environment variables
+## Base URL and token source
 
-Required:
+For first-time setup, prefer collecting `Canvas Base URL` and `Canvas API Key` directly in the conversation.
+
+The bundled script now supports:
+
+- passing them explicitly with `--canvas-url` and `--canvas-token`
+- or asking for them interactively during `setup`
+- and saving them into the per-output local config for later reuse
+
+Environment variables remain supported as an override or fallback:
+
 - `CANVAS_TOKEN`
-
-Optional:
 - `CANVAS_URL`
 
 ## Canvas API 调用方法

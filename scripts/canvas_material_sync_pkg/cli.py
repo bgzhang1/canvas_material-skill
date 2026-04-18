@@ -62,6 +62,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     setup = sub.add_parser("setup", help="Ask configuration questions, run initial full sync, and optionally install scheduler")
     setup.add_argument("--config", help="Optional config path")
+    setup.add_argument("--canvas-url", help="Canvas base URL, e.g. https://canvas.example.edu")
+    setup.add_argument("--canvas-token", help="Canvas API key / access token")
     setup.add_argument("--output-root", help="Destination root for organized downloads")
     setup.add_argument("--course", action="append", type=int, help="Limit to one or more course IDs")
     setup.add_argument("--interval-minutes", type=int, help="Incremental scan interval in minutes when schedule type is interval")

@@ -27,6 +27,7 @@ from .prompts import (
     prompt_hhmm,
     prompt_int,
     prompt_schedule_type,
+    prompt_secret,
     prompt_text,
     prompt_weekdays,
     resolve_schedule_settings,
@@ -52,9 +53,18 @@ from .utils import (
 from .materials import MaterialClassifier, OpenAIClassifier, ensure_pdf, extract_text_from_bytes
 
 
+def normalize_canvas_url(value: str) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return DEFAULT_CANVAS_URL
+    if "://" not in raw:
+        raw = f"https://{raw}"
+    return raw.rstrip("/")
+
+
 def build_config(args: argparse.Namespace) -> Dict[str, Any]:
-    token_present = bool(os.environ.get("CANVAS_TOKEN"))
-    base_url = os.environ.get("CANVAS_URL", DEFAULT_CANVAS_URL)
+    env_token = os.environ.get("CANVAS_TOKEN")
+    base_url_default = normalize_canvas_url(args.canvas_url or os.environ.get("CANVAS_URL") or DEFAULT_CANVAS_URL)
     client_name = args.client_name or detect_client_name()
     scheduler_backend = args.scheduler_backend or detect_scheduler_backend()
     output_root_default = str((Path.cwd() / "canvas_materials").resolve())
@@ -69,28 +79,29 @@ def build_config(args: argparse.Namespace) -> Dict[str, Any]:
     categories_default = args.categories if args.categories else DEFAULT_CATEGORY_FOLDERS
 
     print("\n[setup] 首次安装前需要确认以下项目：")
-    pdf_convert = prompt_bool("1. 是否开启 PDF 转换？", pdf_default)
-    schedule_enabled = prompt_bool("2. 是否开启定时执行？", schedule_default)
+    base_url = normalize_canvas_url(args.canvas_url) if args.canvas_url else normalize_canvas_url(prompt_text("1. Canvas Base URL 是什么？", base_url_default))
+    canvas_token = args.canvas_token or env_token or prompt_secret("2. Canvas API Key 是什么？（输入时不会回显）")
+    pdf_convert = prompt_bool("3. 是否开启 PDF 转换？", pdf_default)
+    schedule_enabled = prompt_bool("4. 是否开启定时执行？", schedule_default)
     schedule_type = None
     interval_minutes = None
     schedule_time = None
     schedule_days: List[str] = []
     if schedule_enabled:
-        schedule_type = prompt_schedule_type("3. 定时执行方式是？", schedule_type_default)
+        schedule_type = prompt_schedule_type("5. 定时执行方式是？", schedule_type_default)
         if schedule_type == "interval":
-            interval_minutes = prompt_int("4. 执行周期是多少（分钟）？", interval_default, 1)
+            interval_minutes = prompt_int("6. 执行周期是多少（分钟）？", interval_default, 1)
         else:
-            schedule_time = prompt_hhmm("5. 具体执行时间是什么（HH:MM）？", schedule_time_default)
+            schedule_time = prompt_hhmm("6. 具体执行时间是什么（HH:MM）？", schedule_time_default)
             if schedule_type == "weekly":
-                schedule_days = prompt_weekdays("6. 每周哪几天执行？", schedule_days_default)
-    categories = prompt_csv("7. 资料要分成哪些文件夹分类（逗号分隔）？", categories_default)
+                schedule_days = prompt_weekdays("7. 每周哪几天执行？", schedule_days_default)
+    categories = prompt_csv("8. 资料要分成哪些文件夹分类（逗号分隔）？", categories_default)
 
     courses = args.course or []
     use_ai = args.use_ai if args.use_ai is not None else bool(os.environ.get("OPENAI_API_KEY"))
-    if not token_present:
-        print("提示：当前进程未检测到 CANVAS_TOKEN，后续运行前请先设置该环境变量。", file=sys.stderr)
     return {
         "canvas_url": base_url,
+        "canvas_token": canvas_token,
         "output_root": str(output_root),
         "state_file": str(default_state_path(output_root)),
         "last_update_file": str(default_last_update_path(output_root)),
@@ -206,9 +217,9 @@ def ensure_course_dirs(course_dir: Path, categories: List[str]) -> None:
 
 
 def run_sync(config: Dict[str, Any], *, mode: str, dry_run: bool = False, verbose: bool = False) -> int:
-    token = os.environ.get("CANVAS_TOKEN")
+    token = os.environ.get("CANVAS_TOKEN") or config.get("canvas_token")
     if not token:
-        print("Error: CANVAS_TOKEN is required.", file=sys.stderr)
+        print("Error: Canvas API Key is required. Please provide CANVAS_TOKEN or save canvas_token during setup.", file=sys.stderr)
         return 1
     output_root = Path(config["output_root"]).expanduser().resolve()
     state_path = Path(config.get("state_file") or default_state_path(output_root)).expanduser().resolve()
@@ -223,7 +234,7 @@ def run_sync(config: Dict[str, Any], *, mode: str, dry_run: bool = False, verbos
             or parse_dt(state.get("last_incremental_sync_at"))
             or parse_dt(state.get("last_full_sync_at"))
         )
-    client = CanvasClient(config.get("canvas_url") or os.environ.get("CANVAS_URL", DEFAULT_CANVAS_URL), token, verbose=verbose)
+    client = CanvasClient(normalize_canvas_url(config.get("canvas_url") or os.environ.get("CANVAS_URL", DEFAULT_CANVAS_URL)), token, verbose=verbose)
     courses = client.fetch_courses(config.get("courses") or None)
     ai = None
     if config.get("use_ai") and os.environ.get("OPENAI_API_KEY"):

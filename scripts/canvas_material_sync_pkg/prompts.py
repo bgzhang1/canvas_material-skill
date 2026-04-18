@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import getpass
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -44,6 +45,14 @@ def prompt_csv(prompt: str, default: List[str]) -> List[str]:
 def prompt_text(prompt: str, default: str) -> str:
     raw = input(f"{prompt} [默认 {default}] ").strip()
     return raw or default
+
+
+def prompt_secret(prompt: str) -> str:
+    while True:
+        raw = getpass.getpass(f"{prompt} ").strip()
+        if raw:
+            return raw
+        print("该项不能为空。")
 
 
 def normalize_schedule_type(value: str) -> Optional[str]:

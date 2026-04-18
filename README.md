@@ -5,6 +5,7 @@
 你不需要记命令。  
 你只需要像和 AI 助手说话一样，直接描述你的目标，`canvas_material` 会负责：
 
+- **首次对话设置 Canvas Base URL 和 API Key**
 - **首次全量扫描**
 - **后续增量更新**
 - **资料分类整理**
@@ -66,6 +67,8 @@ https://github.com/bgzhang1/canvas_material-skill
 
 ```text
 帮我初始化 canvas_material：
+- Canvas Base URL 是 https://cityu-dg.instructure.com
+- Canvas API Key 是 <你的 token>
 - 输出目录放到 C:\Users\BGZHANG\Desktop\zip\canvas_materials
 - 开启 PDF 转换
 - 不开定时
@@ -74,12 +77,16 @@ https://github.com/bgzhang1/canvas_material-skill
 
 此时模型应继续在对话里确认必要信息，例如：
 
+- Canvas Base URL 是什么
+- Canvas API Key / Access Token 是什么
 - 是否开启 PDF 转换
 - 是否开启定时同步
 - 如果开启，想怎么定时
 - 分类文件夹有哪些
 
 如果信息已经说全，模型应直接进入初始化流程，而不是反复追问。
+
+> 第一次使用时，**Base URL 和 Key 应通过对话设置**，而不是要求用户先手动配置环境变量。
 
 ---
 
@@ -182,17 +189,19 @@ https://github.com/bgzhang1/canvas_material-skill
 
 ```text
 好的，我先确认几项：
-1. 是否开启 PDF 转换？
-2. 是否开启定时同步？
-3. 如果开启，想怎么定时？
-4. 资料分成哪些分类目录？
-5. 输出目录放在哪里？
+1. Canvas Base URL 是什么？
+2. Canvas API Key 是什么？
+3. 是否开启 PDF 转换？
+4. 是否开启定时同步？
+5. 如果开启，想怎么定时？
+6. 资料分成哪些分类目录？
+7. 输出目录放在哪里？
 ```
 
 用户：
 
 ```text
-开启 PDF，不开定时，分类用 lecture 和 tutorial，输出到 C:\Users\BGZHANG\Desktop\zip\canvas_materials
+Base URL 是 https://cityu-dg.instructure.com，API Key 是 <我的 token>，开启 PDF，不开定时，分类用 lecture 和 tutorial，输出到 C:\Users\BGZHANG\Desktop\zip\canvas_materials
 ```
 
 模型随后应完成：
@@ -270,6 +279,11 @@ https://github.com/bgzhang1/canvas_material-skill
 - `state`：保存已下载资料和同步状态
 - `last_update`：保存最后一次成功同步的时间
 
+其中 `config` 还可以保存首次对话中设置的：
+
+- `canvas_url`
+- `canvas_token`
+
 因此模型在后续对话中应该能够：
 
 - 识别这是一个已经初始化过的目录
@@ -291,9 +305,12 @@ Authorization: Bearer <CANVAS_TOKEN>
 
 对普通用户来说，推荐的交互方式应当是：
 
-- 用户告诉模型 Canvas 地址或 token 的准备情况
-- 模型负责读取现有环境或引导补充最少必要信息
+- 第一次使用时，用户直接在对话里告诉模型 Canvas Base URL 和 API Key
+- 模型把这些信息保存到本地配置中，供后续同步复用
+- 如果环境变量已存在，模型也可以直接复用它们
 - 用户不需要每次手动回忆底层 API 调用方式
+
+> 提醒：`canvas_token` 属于敏感信息，只应保存在本地生成的配置中，不要提交到公开仓库。
 
 如果你是维护者或要做二次开发，可以再去看：
 
