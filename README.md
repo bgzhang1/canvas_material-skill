@@ -68,11 +68,42 @@ cd canvas_material-skill
 
 ### 0. 先准备环境变量
 
-必需：
+在第一次运行前，先准备好 Canvas 访问地址和访问令牌。
+
+#### 第一步：确认你的 Canvas 站点地址
+
+先打开你平时登录的 Canvas 页面，浏览器地址栏里的域名就是 `CANVAS_URL`。
+
+例如：
+
+- `https://cityu-dg.instructure.com`
+- `https://canvas.example.edu`
+
+> 注意：这里填写的是 **站点根地址**，不要带 `/api/v1`，也不要带具体课程路径。
+
+#### 第二步：生成 Canvas Token
+
+你需要一个 Canvas Access Token，供脚本通过 API 拉取课程资料。
+
+通用步骤通常是：
+
+1. 登录 Canvas
+2. 打开个人账号相关页面
+3. 进入 **Settings** 或 **Account Settings**
+4. 找到 **Approved Integrations**、**Access Tokens**、**New Access Token** 或类似入口
+5. 创建一个新的 token
+6. 复制生成后的 token
+
+> 不同学校的 Canvas 界面可能略有差异，但一般都能在账号设置页面找到 token 生成功能。  
+> token 往往只会完整显示一次，建议生成后立刻保存。
+
+#### 第三步：设置环境变量
+
+必需变量：
 
 - `CANVAS_TOKEN`
 
-可选：
+可选变量：
 
 - `CANVAS_URL`
   - 默认值：`https://canvas.example.edu`
@@ -81,19 +112,103 @@ cd canvas_material-skill
 - `OPENAI_MODEL`
   - 可选，默认 `gpt-5-mini`
 
-#### PowerShell
+#### PowerShell（当前窗口临时生效）
 
 ```powershell
 $env:CANVAS_TOKEN = "your_canvas_token"
 $env:CANVAS_URL = "https://your-canvas-domain"
 ```
 
-#### Bash
+如果你还想启用 AI 分类：
+
+```powershell
+$env:OPENAI_API_KEY = "your_openai_api_key"
+$env:OPENAI_MODEL = "gpt-5-mini"
+```
+
+#### Bash（当前窗口临时生效）
 
 ```bash
 export CANVAS_TOKEN="your_canvas_token"
 export CANVAS_URL="https://your-canvas-domain"
 ```
+
+如果你还想启用 AI 分类：
+
+```bash
+export OPENAI_API_KEY="your_openai_api_key"
+export OPENAI_MODEL="gpt-5-mini"
+```
+
+#### 第四步：检查是否设置成功
+
+##### PowerShell
+
+```powershell
+echo $env:CANVAS_URL
+echo $env:CANVAS_TOKEN
+```
+
+##### Bash
+
+```bash
+echo "$CANVAS_URL"
+echo "$CANVAS_TOKEN"
+```
+
+如果能看到你刚设置的值，就说明当前终端已经可以运行脚本了。
+
+> 建议不要把真实 token 贴到截图、公开 issue 或 GitHub 仓库里。
+
+#### 第五步：如果你想长期保存
+
+如果你不想每次开终端都重新设置，可以把环境变量写入你的 shell 启动文件或系统环境变量。
+
+##### Windows PowerShell（写入用户级环境变量）
+
+```powershell
+setx CANVAS_URL "https://your-canvas-domain"
+setx CANVAS_TOKEN "your_canvas_token"
+```
+
+如果要启用 AI 分类：
+
+```powershell
+setx OPENAI_API_KEY "your_openai_api_key"
+setx OPENAI_MODEL "gpt-5-mini"
+```
+
+> `setx` 写入后，**需要重新打开一个新的终端窗口** 才会生效。
+
+##### Bash（写入 shell 配置文件）
+
+把下面内容追加到 `~/.bashrc`、`~/.zshrc` 或你正在使用的 shell 配置文件中：
+
+```bash
+export CANVAS_URL="https://your-canvas-domain"
+export CANVAS_TOKEN="your_canvas_token"
+export OPENAI_API_KEY="your_openai_api_key"
+export OPENAI_MODEL="gpt-5-mini"
+```
+
+然后执行：
+
+```bash
+source ~/.bashrc
+```
+
+如果你实际使用的是 zsh，请改成：
+
+```bash
+source ~/.zshrc
+```
+
+#### 最小必需配置
+
+如果你只想先跑通最基础版本，只需要这两个：
+
+- `CANVAS_TOKEN`
+- `CANVAS_URL`
 
 ---
 
