@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+
+# Runtime memory/state
+memory.json
+canvas_materials/
+**/_canvas_material_sync_config.json
+**/_canvas_material_sync_state.json
+**/_canvas_material_sync_last_update.txt
+
+# Local env files
+.env
+.env.*
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
