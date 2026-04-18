@@ -22,11 +22,11 @@ SKILL_ROOT = SCRIPTS_ROOT.parent
 MEMORY_PATH = SKILL_ROOT / "memory.json"
 RULES_PATH = SKILL_ROOT / "rules.json"
 WEEKDAY_ALIASES = {
-    "mon": "MON", "monday": "MON", "??": "MON", "???": "MON", "???": "MON", "1": "MON",
-    "tue": "TUE", "tues": "TUE", "tuesday": "TUE", "??": "TUE", "???": "TUE", "???": "TUE", "2": "TUE",
-    "wed": "WED", "wednesday": "WED", "??": "WED", "???": "WED", "???": "WED", "3": "WED",
-    "thu": "THU", "thur": "THU", "thurs": "THU", "thursday": "THU", "??": "THU", "???": "THU", "???": "THU", "4": "THU",
-    "fri": "FRI", "friday": "FRI", "??": "FRI", "???": "FRI", "???": "FRI", "5": "FRI",
-    "sat": "SAT", "saturday": "SAT", "??": "SAT", "???": "SAT", "???": "SAT", "6": "SAT",
-    "sun": "SUN", "sunday": "SUN", "??": "SUN", "???": "SUN", "???": "SUN", "??": "SUN", "???": "SUN", "???": "SUN", "7": "SUN", "0": "SUN",
+    "mon": "MON", "monday": "MON", "周一": "MON", "星期一": "MON", "一": "MON", "1": "MON",
+    "tue": "TUE", "tues": "TUE", "tuesday": "TUE", "周二": "TUE", "星期二": "TUE", "二": "TUE", "2": "TUE",
+    "wed": "WED", "wednesday": "WED", "周三": "WED", "星期三": "WED", "三": "WED", "3": "WED",
+    "thu": "THU", "thur": "THU", "thurs": "THU", "thursday": "THU", "周四": "THU", "星期四": "THU", "四": "THU", "4": "THU",
+    "fri": "FRI", "friday": "FRI", "周五": "FRI", "星期五": "FRI", "五": "FRI", "5": "FRI",
+    "sat": "SAT", "saturday": "SAT", "周六": "SAT", "星期六": "SAT", "六": "SAT", "6": "SAT",
+    "sun": "SUN", "sunday": "SUN", "周日": "SUN", "星期日": "SUN", "周天": "SUN", "星期天": "SUN", "日": "SUN", "天": "SUN", "7": "SUN", "0": "SUN",
 }

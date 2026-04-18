@@ -16,12 +16,12 @@ def prompt_bool(prompt: str, default: bool) -> bool:
             return True
         if raw in {"n", "no"}:
             return False
-        print("??? y ? n?")
+        print("请输入 y 或 n。")
 
 
 def prompt_int(prompt: str, default: int, minimum: int = 1) -> int:
     while True:
-        raw = input(f"{prompt} [?? {default}] ").strip()
+        raw = input(f"{prompt} [默认 {default}] ").strip()
         if not raw:
             return default
         try:
@@ -30,11 +30,11 @@ def prompt_int(prompt: str, default: int, minimum: int = 1) -> int:
                 return value
         except Exception:
             pass
-        print(f"??????? {minimum} ????")
+        print(f"请输入不小于 {minimum} 的整数。")
 
 
 def prompt_csv(prompt: str, default: List[str]) -> List[str]:
-    raw = input(f"{prompt} [?? {', '.join(default)}] ").strip()
+    raw = input(f"{prompt} [默认 {', '.join(default)}] ").strip()
     if not raw:
         return default
     items = [item.strip() for item in raw.split(",") if item.strip()]
@@ -42,7 +42,7 @@ def prompt_csv(prompt: str, default: List[str]) -> List[str]:
 
 
 def prompt_text(prompt: str, default: str) -> str:
-    raw = input(f"{prompt} [?? {default}] ").strip()
+    raw = input(f"{prompt} [默认 {default}] ").strip()
     return raw or default
 
 
@@ -55,35 +55,36 @@ def normalize_schedule_type(value: str) -> Optional[str]:
         "minutes": "interval",
         "minute": "interval",
         "minutely": "interval",
-        "??": "interval",
-        "??": "interval",
-        "???": "interval",
+        "每隔": "interval",
+        "分钟": "interval",
+        "按分钟": "interval",
+        "间隔": "interval",
         "daily": "daily",
         "day": "daily",
-        "??": "daily",
-        "??": "daily",
+        "每天": "daily",
+        "每日": "daily",
         "weekly": "weekly",
         "week": "weekly",
-        "??": "weekly",
-        "???": "weekly",
+        "每周": "weekly",
+        "每星期": "weekly",
     }
     return mapping.get(raw)
 
 
 def prompt_schedule_type(prompt: str, default: str) -> str:
     labels = {
-        "interval": "interval(?? N ??)",
-        "daily": "daily(????)",
-        "weekly": "weekly(????)",
+        "interval": "interval(每隔 N 分钟)",
+        "daily": "daily(每天定时)",
+        "weekly": "weekly(每周定时)",
     }
     while True:
-        raw = input(f"{prompt} [?? {labels[default]}] ").strip()
+        raw = input(f"{prompt} [默认 {labels[default]}] ").strip()
         if not raw:
             return default
         value = normalize_schedule_type(raw)
         if value:
             return value
-        print("??? interval/daily/weekly???? ??/??/???")
+        print("请输入 interval / daily / weekly，或使用中文：每隔 / 每天 / 每周。")
 
 
 def normalize_hhmm(value: str) -> Optional[str]:
@@ -101,26 +102,26 @@ def normalize_hhmm(value: str) -> Optional[str]:
 
 def prompt_hhmm(prompt: str, default: str) -> str:
     while True:
-        raw = input(f"{prompt} [?? {default}] ").strip()
+        raw = input(f"{prompt} [默认 {default}] ").strip()
         if not raw:
             return default
         normalized = normalize_hhmm(raw)
         if normalized:
             return normalized
-        print("?????????? 09:00 ? 18:30?")
+        print("请输入合法时间，例如 09:00 或 18:30。")
 
 
 def normalize_weekdays(values: Any) -> List[str]:
     if values is None:
         return []
     if isinstance(values, str):
-        tokens = [item.strip() for item in re.split(r"[,?/\s]+", values) if item.strip()]
+        tokens = [item.strip() for item in re.split(r"[,，/、\s]+", values) if item.strip()]
     elif isinstance(values, list):
         tokens = []
         for item in values:
             if item is None:
                 continue
-            tokens.extend([part.strip() for part in re.split(r"[,?/\s]+", str(item)) if part.strip()])
+            tokens.extend([part.strip() for part in re.split(r"[,，/、\s]+", str(item)) if part.strip()])
     else:
         tokens = [str(values).strip()]
     out: List[str] = []
@@ -134,13 +135,13 @@ def normalize_weekdays(values: Any) -> List[str]:
 def prompt_weekdays(prompt: str, default: List[str]) -> List[str]:
     default_text = ", ".join(default)
     while True:
-        raw = input(f"{prompt} [?? {default_text}] ").strip()
+        raw = input(f"{prompt} [默认 {default_text}] ").strip()
         if not raw:
             return default
         days = normalize_weekdays(raw)
         if days:
             return days
-        print("?????????? mon,wed ? ??,???")
+        print("请输入合法星期，例如 mon,wed 或 周一,周三。")
 
 
 def resolve_schedule_settings(config: Dict[str, Any]) -> Dict[str, Any]:
