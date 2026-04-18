@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from .canvas_api import CanvasClient, choose_filename, collect_candidates
-from .common import (
+from .constants import (
     DEFAULT_CANVAS_URL,
     DEFAULT_CATEGORY_FOLDERS,
     DEFAULT_INTERVAL_MINUTES,
@@ -17,18 +17,11 @@ from .common import (
     DEFAULT_WEEKLY_DAYS,
     ENTRY_SCRIPT_PATH,
     RULES_PATH,
-    default_config_path,
-    default_last_update_path,
-    default_state_path,
-    detect_client_name,
-    detect_scheduler_backend,
-    load_json,
-    load_rule_overrides,
+)
+from .prompts import (
     normalize_hhmm,
     normalize_schedule_type,
     normalize_weekdays,
-    now_utc,
-    parse_dt,
     prompt_bool,
     prompt_csv,
     prompt_hhmm,
@@ -36,12 +29,25 @@ from .common import (
     prompt_schedule_type,
     prompt_text,
     prompt_weekdays,
-    read_last_update_marker,
     resolve_schedule_settings,
-    sanitize_filename,
-    save_json,
+)
+from .state import (
+    default_config_path,
+    default_last_update_path,
+    default_state_path,
+    read_last_update_marker,
     update_memory,
     write_last_update_marker,
+)
+from .utils import (
+    detect_client_name,
+    detect_scheduler_backend,
+    load_json,
+    load_rule_overrides,
+    now_utc,
+    parse_dt,
+    sanitize_filename,
+    save_json,
 )
 from .materials import MaterialClassifier, OpenAIClassifier, ensure_pdf, extract_text_from_bytes
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Canvas Material"
+  short_description: "Sync and organize Canvas course materials"
+  default_prompt: "Use $canvas_material to initialize or update my Canvas course material sync."

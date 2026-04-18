@@ -1,11 +1,11 @@
-﻿---
-name: canvas-material-sync
+---
+name: canvas_material
 description: Ask the user whether to enable PDF conversion, whether to enable scheduled sync, and if enabled whether the sync should run every N minutes or on a daily/weekly schedule with a specific time; also ask which category folders to use; then perform a first full Canvas scan across likely material locations including announcements, assignment bodies, syllabus, pages, discussions, modules, and files; remember that the initial full download has completed; and optionally set up recurring incremental syncs that work across different terminal clients. This skill also includes reusable Canvas REST API calling conventions.
 ---
 
-# Canvas Material Sync
+# canvas_material
 
-Use this skill when the user wants ongoing Canvas material monitoring and automatic organization.
+Use this skill when the user wants ongoing Canvas material monitoring and automatic organization via the main skill name `canvas_material`.
 
 ## Required questions before first setup
 

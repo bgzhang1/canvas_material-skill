@@ -11,7 +11,9 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from .common import DOC_EXTS, IGNORE_EXTS, IGNORE_RE, LECTURE_RE, TUTORIAL_RE, category_mapping, strip_html
+from .constants import DOC_EXTS, IGNORE_EXTS, IGNORE_RE, LECTURE_RE, TUTORIAL_RE
+from .prompts import category_mapping
+from .utils import strip_html
 
 
 def io_bytes(data: bytes):

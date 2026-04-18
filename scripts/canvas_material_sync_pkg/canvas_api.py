@@ -10,7 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from .common import FILE_LINK_RE, parse_dt, sanitize_filename, strip_html
+from .constants import FILE_LINK_RE
+from .utils import parse_dt, sanitize_filename, strip_html
 
 
 class CanvasClient:

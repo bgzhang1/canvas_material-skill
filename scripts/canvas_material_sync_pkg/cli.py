@@ -4,7 +4,8 @@ import argparse
 import json
 from pathlib import Path
 
-from .common import default_config_path, load_json, save_json
+from .state import default_config_path
+from .utils import load_json, save_json
 from .sync_core import build_config, finalize_after_run, install_scheduler, load_config, run_sync
 
 
