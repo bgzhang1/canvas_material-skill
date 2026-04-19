@@ -1,302 +1,373 @@
----
+﻿---
 name: canvas_material
-description: Ask the user whether to enable PDF conversion, whether to enable scheduled sync, and if enabled whether the sync should run every N minutes or on a daily/weekly schedule with a specific time; also ask which category folders to use; then perform a first full Canvas scan across likely material locations including announcements, assignment bodies, syllabus, pages, discussions, modules, and files; remember that the initial full download has completed; and optionally set up recurring incremental syncs that work across different terminal clients. This skill also includes reusable Canvas REST API calling conventions.
+description: 对话驱动的 Canvas 资料下载与整理 skill。首次启动时询问 Canvas Base URL 和 API Key，保存到下载目录 config；首次更新时先列出课程与学期，询问用户要下载的学期、是否转换 PDF、以及分类方式，然后逐课程下载资料、按需转 PDF、再按分类方式整理到课程目录下。
 ---
 
 # canvas_material
 
-Use this skill when the user wants ongoing Canvas material monitoring and automatic organization via the main skill name `canvas_material`.
+这个 skill 是 **对话驱动** 的。
 
-## Required questions before first setup
+重点不是让用户自己背命令，而是：
 
-Before running initial setup, always ask the user these questions in plain language:
+1. 你在对话里收集必要信息
+2. 你调用本 skill 下的小脚本逐步完成任务
+3. 你在关键节点继续和用户确认
+4. 你把结果整理到本地下载目录
+
+除非用户明确要求，否则**不要把“请你自己运行某个脚本”作为默认工作流**。
+
+---
+
+## 当前脚本清单
+
+本 skill 当前使用这些脚本：
+
+- `scripts/list_courses.py`
+  - 脚本一:获取课程编号 + 学期 + 课程名称
+- `scripts/download_course_links.py`
+  - 脚本二:按课程编号抓取该课程下的下载链接并下载到 `输出根目录/课程名称/`
+- `scripts/convert_to_pdf.py`
+  - 脚本三:把 `doc/docx/ppt/pptx/xls/xlsx/...` 等文件转成 PDF
+- `scripts/list_course_files.py`
+  - 脚本四:列出课程目录下所有文件，包含文件名与目录/路径
+- `scripts/move_files.py`
+  - 脚本五:批量移动文件
+
+---
+
+## 本 skill 的默认本地配置文件
+
+所有关键配置都应保存在**下载目录**里的本地 config 中：
+
+- `<download_root>/_canvas_material_sync_config.json`
+
+这个 config 至少应保存：
+
+- `canvas_url`
+- `canvas_token`
+- `output_root`
+- `pdf_convert`
+- `category_folders`
+- `selected_term`
+
+如果该文件不存在，就把这次任务视为**首次启动**。
+
+如果该文件已存在，但缺少上面任一关键字段，也视为**未完整初始化**。
+
+---
+
+## 首次启动：必须多轮对话
+
+首次启动时，你必须在对话里先问用户：
 
 1. Canvas Base URL 是什么
 2. Canvas API Key / Access Token 是什么
-3. 是否开启 PDF 转换
-4. 是否开启定时执行
-5. 如果开启定时执行，请直接说明你想怎么定时执行（例如：`每 30 分钟`、`每天 09:00`、`每周一和周三 09:00`）
-6. 资料要分成哪些文件夹分类（默认 `lecture` 和 `tutorial`）
 
-Questions 1, 2, 3, 4, and 6 are mandatory for the first setup and must not be skipped.
-Question 5 is mandatory when and only when the user enables scheduled execution.
-Do not silently infer them and do not silently accept defaults on the user's behalf.
-Even if the surrounding client mode prefers making reasonable assumptions, this skill overrides that behavior for these required questions.
-You may suggest defaults, but you must still ask and wait for the user's answer before running `setup`.
+这两项拿到之后：
 
-When the user answers question 3 in natural language, interpret it into one of these internal schedule styles before calling the script:
+- 将它们写入下载目录 config
+- 默认下载目录如果用户没指定，就使用当前工作目录下的 `canvas_materials`
+- Base URL 应保存为站点根地址，例如：
+  - `https://canvas.example.edu`
+- 不要自动附加 `/api/v1`
+- Token 属于敏感信息，不要在回复里反复回显
 
-- `interval`: e.g. `每 30 分钟`
-- `daily`: e.g. `每天 09:00`
-- `weekly`: e.g. `每周一和周三 09:00`
+### 首次启动时的对话要求
 
-If the user gives an ambiguous schedule description, ask one short follow-up question only for the missing part.
+- 不要一次性跳过确认直接开始下载
+- 不要假设 token 已经可用，除非你确实从已有 config 或环境变量读到了
+- 不要把“学期、PDF、分类方式”也和 Base URL / token 混成一个超长问题一次扔给用户
+- 这一步只负责完成**连接信息初始化**
 
-If output directory or target courses are not already clear from context, make a reasonable default:
-- output root: a `canvas_materials` directory in the current working directory
-- courses: all currently active Canvas courses visible to the token
+---
 
-For question 1:
-- prefer the exact site root URL, e.g. `https://cityu-dg.instructure.com`
-- do not append `/api/v1`
+## 首次更新工作流
 
-For question 2:
-- treat the token as sensitive
-- do not echo it back unnecessarily in the reply
-- save it only into the local generated config for later sync reuse
+当 Base URL 和 token 已保存后，首次更新必须按下面顺序进行。
 
-## What the bundled script supports
+### 第一步：列出课程与学期，然后继续问用户
 
-The script has three modes:
-
-- `setup`: interactive initialization, full scan, local memory/state write, and optional scheduler installation
-- `run`: full or incremental sync using a saved config
-- `install-scheduler`: refresh the recurring task later
-
-Main script:
-- `scripts/canvas_material_sync.py`
-
-## Setup flow
-
-Run:
+先运行：
 
 ```powershell
-python scripts/canvas_material_sync.py setup
+python scripts/list_courses.py
 ```
 
-Or pass values directly:
+拿到课程编号、学期、课程名称后，在对话里继续问用户：
+
+1. 想下载哪个学期
+2. 是否开启 PDF 转换
+3. 分类方式是什么
+
+分类方式默认值：
+
+- `lecture`
+- `tutorial`
+
+把用户的选择写入下载目录 config：
+
+- `selected_term`
+- `pdf_convert`
+- `category_folders`
+
+### 这一轮对话的要求
+
+- 必须把当前可选学期明确展示给用户
+- 不要偷偷替用户决定学期
+- PDF 转换必须问
+- 分类方式必须问；如果用户说默认，就写入 `lecture` / `tutorial`
+
+---
+
+## 第二步：按课程逐个下载
+
+在用户确定学期后：
+
+1. 从课程列表中筛出该学期下的课程
+2. 按课程一个一个处理
+3. 每门课都调用：
 
 ```powershell
-python scripts/canvas_material_sync.py setup \
-  --output-root C:/path/to/canvas_materials \
-  --course 560 --course 487 \
-  --schedule \
-  --schedule-type weekly \
-  --schedule-time 09:00 \
-  --schedule-days mon wed \
-  --categories lecture tutorial \
-  --pdf-convert \
-  --use-ai
+python scripts/download_course_links.py <course_id>
 ```
 
-During setup the script will:
+这个脚本负责从这些来源寻找下载链接：
 
-1. collect configuration
-2. do an initial **full** scan and download
-3. scan these likely source locations:
-   - direct course files
-   - announcement bodies
-   - assignment descriptions / homework bodies
-   - syllabus body
-   - front page
-   - pages
-   - discussions
-   - modules / module items
-4. classify files into the chosen folders
-5. remember that first full sync has completed
-6. if scheduling is enabled, install a recurring incremental scheduler
+- `course files`
+- `announcements`
+- `assignment descriptions`
+- `syllabus`
+- `front page`
+- `pages`
+- `discussions`
+- `modules / module items`
 
-Supported schedule styles:
+下载目标目录应为：
 
-- every N minutes
-- daily at a fixed `HH:MM`
-- weekly on specific weekdays at a fixed `HH:MM`
+- `<download_root>/<course_name>/`
 
-## Memory and state
+### 逐课程处理要求
 
-The skill keeps durable memory in:
+- 必须按课程逐个做，不要先把所有课混在一起再处理
+- 每完成一门课，就进入后续 PDF 转换与分类步骤
+- 如果某门课没有找到可下载链接，也要在对话里简短说明
 
-- skill memory: `memory.json` in the skill root
-- skill rules: `rules.json` in the skill root
-- per-output config: `<output-root>/_canvas_material_sync_config.json`
-- per-output state: `<output-root>/_canvas_material_sync_state.json`
-- per-output last update marker: `<output-root>/_canvas_material_sync_last_update.txt`
+---
 
-`memory.json` records that the first full download has already happened.
-`rules.json` lets you keep course-specific classification overrides without changing the script.
-`_canvas_material_sync_last_update.txt` stores the last completed real sync time directly inside the downloaded materials folder and is refreshed after each non-dry-run sync.
+## 第三步：按用户习惯决定是否转 PDF
 
-## Scheduling strategy across clients
+当某一门课完整下载完后：
 
-If scheduling is enabled, the script itself prefers **OS-level scheduling** so it works across different terminal clients and local environments.
-
-Current default backend selection:
-- Windows -> Task Scheduler
-- Unix-like systems -> cron stub / cron line
-
-### Optional app-native automation note
-
-If the current client supports app-native automation, you may additionally create a recurring run there. The script is still useful because it stores config, memory, and sync state in a portable way.
-
-## Running later
-
-Incremental or automatic mode from an existing config:
+- 读取 config 中的 `pdf_convert`
+- 如果为 `true`，调用：
 
 ```powershell
-python scripts/canvas_material_sync.py run --config C:/path/to/_canvas_material_sync_config.json --mode auto
+python scripts/convert_to_pdf.py "<course_dir>" --recursive
 ```
 
-`auto` means:
-- if first full sync is not complete -> run full sync
-- otherwise -> run incremental sync since the last full/incremental update timestamp
+- 如果为 `false`，跳过
 
-## Base URL and token source
+### PDF 转换要求
 
-For first-time setup, prefer collecting `Canvas Base URL` and `Canvas API Key` directly in the conversation.
+- 这是**每门课下载完成后**立即做的步骤，不是所有课程全下载完才统一做
+- 如果个别文件转换失败，不要因此中断整门课
+- 应保留原文件，除非用户明确要求只保留 PDF
 
-The bundled script now supports:
+---
 
-- passing them explicitly with `--canvas-url` and `--canvas-token`
-- or asking for them interactively during `setup`
-- and saving them into the per-output local config for later reuse
+## 第四步：读取课程目录并分类
 
-Environment variables remain supported as an override or fallback:
+当某一门课完整下载完，并且该门课需要的 PDF 转换也处理完后：
 
-- `CANVAS_TOKEN`
-- `CANVAS_URL`
+1. 调用脚本四读取这门课目录下的所有文件：
 
-## Canvas API 调用方法
+```powershell
+python scripts/list_course_files.py "<course_dir>" --relative --json
+```
 
-这个 skill 现在统一使用 **Canvas REST API + Bearer Token**。
+2. 根据文件名与目录信息，结合用户的分类方式，判断这些文件应被放到哪个分类目录
+3. 再调用脚本五批量移动文件完成整理
 
-基础规则：
+例如默认分类方式是：
 
-- Base URL：`<CANVAS_URL>`，默认 `https://canvas.example.edu`
-- 所有 API 路径都挂在：`<CANVAS_URL>/api/v1/...`
-- 认证头：
+- `lecture`
+- `tutorial`
+
+那么你应根据文件名关键词自行判断：
+
+- lecture / lec / slides / chapter / topic / syllabus / 课件 / 讲义
+  - 优先归到 `lecture`
+- tutorial / tut / lab / assignment / homework / quiz / exercise / 作业 / 实验 / 练习
+  - 优先归到 `tutorial`
+- 都不明显时：
+  - 优先保留在课程目录根下或单独放入你本轮工作流中使用的兜底目录
+  - 不要擅自删除
+
+### 分类阶段要求
+
+- 先列文件，再分类，再移动
+- 不要直接盲移
+- 如果用户给出的分类方式不是 `lecture/tutorial`，就按用户定义的新分类名整理
+- 这个 skill 默认是**文件名驱动 + 目录信息辅助**，不是强制依赖 AI 分类器
+
+---
+
+## 后续更新工作流
+
+对于已经初始化过的下载目录：
+
+1. 先读取 `<download_root>/_canvas_material_sync_config.json`
+2. 获取：
+   - `canvas_url`
+   - `canvas_token`
+   - `selected_term`
+   - `pdf_convert`
+   - `category_folders`
+3. 如果用户没有明确要求切换学期：
+   - 默认沿用 `selected_term`
+4. 如果用户要求改学期、改 PDF 习惯、改分类方式：
+   - 先更新 config，再执行下载流程
+
+后续更新依然建议沿用同样的逐课程流程：
+
+1. 列课程
+2. 按选定学期筛课程
+3. 一门一门下载
+4. 一门一门转 PDF
+5. 一门一门分类整理
+
+---
+
+## 多轮参与规则
+
+这个 skill 明确要求你在对话中**多轮参与**。
+
+你不应把首次工作流压缩成“一次性执行所有动作”的黑盒流程。
+
+推荐节奏：
+
+### 回合 1：初始化连接信息
+
+- 问 Base URL
+- 问 API Key
+- 写入 config
+
+### 回合 2：决定首次下载策略
+
+- 运行 `list_courses.py`
+- 向用户展示课程与学期
+- 问用户选择哪个学期
+- 问是否转 PDF
+- 问分类方式
+- 更新 config
+
+### 回合 3+：执行逐课程工作流
+
+对每门课：
+
+1. 下载
+2. 转 PDF（如需要）
+3. 列文件
+4. 分类移动
+
+对于进度汇报，优先用这种简洁形式：
+
+- 当前处理哪门课
+- 找到多少链接
+- 下载了多少文件
+- 转 PDF 成功/失败多少
+- 分类移动到了哪些目录
+
+---
+
+## 脚本调用约定
+
+### 1. 列课程
+
+```powershell
+python scripts/list_courses.py
+python scripts/list_courses.py --term "Semester B 2025/26"
+python scripts/list_courses.py --json
+```
+
+### 2. 下载单门课
+
+```powershell
+python scripts/download_course_links.py 560
+python scripts/download_course_links.py 560 --dry-run
+python scripts/download_course_links.py 560 --json
+```
+
+### 3. 转 PDF
+
+```powershell
+python scripts/convert_to_pdf.py "C:\path\course_dir" --recursive
+python scripts/convert_to_pdf.py "C:\path\course_dir" --recursive --json
+```
+
+### 4. 列课程目录文件
+
+```powershell
+python scripts/list_course_files.py "C:\path\course_dir" --relative
+python scripts/list_course_files.py "C:\path\course_dir" --relative --json
+```
+
+### 5. 批量移动
+
+```powershell
+python scripts/move_files.py "C:\src" "C:\dst" --pattern "*.pdf" --recursive
+python scripts/move_files.py "C:\src" "C:\dst" --recursive --dry-run
+```
+
+---
+
+## 对用户的默认表达方式
+
+优先这样和用户交流：
+
+- “我先帮你读取课程和学期”
+- “你想下载哪个学期？”
+- “这次要不要自动转 PDF？”
+- “分类还是用默认的 `lecture` 和 `tutorial` 吗？”
+- “我现在开始逐门课下载，先处理 CS2312”
+- “CS2312 已下载完，接下来开始转 PDF / 分类整理”
+
+不要默认这样说：
+
+- “你去执行这个命令”
+- “请先手动配置环境变量”
+- “请自己准备 cron / 计划任务”
+
+---
+
+## 安全与本地数据
+
+- `canvas_token` 只保存在本地下载目录 config 中
+- 不要把 token 写进公开仓库文件
+- 不要在对话里反复明文展示 token
+- 删除、移动文件前应尽量明确目标目录
+- 批量移动时优先先做一次 `--dry-run` 预览，尤其是分类阶段
+
+---
+
+## 你最终要实现的体验
+
+用户只需要说类似：
 
 ```text
-Authorization: Bearer <CANVAS_TOKEN>
+帮我初始化并下载某个学期的 Canvas 资料
 ```
 
-### 最小调用格式
+你就应该按以下顺序推进：
 
-#### PowerShell
+1. 问 Base URL 和 key
+2. 保存 config
+3. 列课程与学期
+4. 问学期、PDF、分类方式
+5. 按课程逐个下载
+6. 每门课下载后立即按需转 PDF
+7. 每门课下载后立即读取文件并分类移动
+8. 在对话中持续汇报进度
 
-```powershell
-$headers = @{ Authorization = "Bearer $env:CANVAS_TOKEN" }
-Invoke-RestMethod `
-  -Headers $headers `
-  -Uri "$env:CANVAS_URL/api/v1/users/self" `
-  -Method Get
-```
+这就是本 skill 的核心工作流。
 
-#### Python
-
-```python
-import json, os, urllib.request
-
-url = f"{os.environ['CANVAS_URL']}/api/v1/users/self"
-req = urllib.request.Request(
-    url,
-    headers={"Authorization": f"Bearer {os.environ['CANVAS_TOKEN']}"},
-)
-with urllib.request.urlopen(req, timeout=30) as resp:
-    data = json.loads(resp.read().decode("utf-8"))
-print(data)
-```
-
-### 这个 skill 当前实际会调用的接口
-
-脚本 `scripts/canvas_material_sync.py` 目前直接访问这些端点：
-
-- `GET /api/v1/courses?per_page=100&include[]=term&include[]=total_scores&include[]=current_period_grades`
-  - 拉当前可见课程
-- `GET /api/v1/courses/:course_id/files?per_page=100`
-  - 拉课程文件
-- `GET /api/v1/announcements?context_codes[]=course_:course_id&per_page=100`
-  - 拉公告
-- `GET /api/v1/courses/:course_id/assignments?per_page=100`
-  - 拉作业描述
-- `GET /api/v1/courses/:course_id?include[]=syllabus_body`
-  - 拉 syllabus HTML
-- `GET /api/v1/courses/:course_id/front_page`
-  - 拉 front page
-- `GET /api/v1/courses/:course_id/pages?per_page=100`
-  - 列出 pages
-- `GET /api/v1/courses/:course_id/pages/:page_url`
-  - 拉 page 正文
-- `GET /api/v1/courses/:course_id/discussion_topics?per_page=100`
-  - 拉讨论区帖子
-- `GET /api/v1/courses/:course_id/modules?include[]=items&per_page=100`
-  - 拉模块及模块项
-
-### 文件下载方式
-
-这个 skill 处理文件下载有两种来源：
-
-1. **直接文件 API**
-   - `courses/:id/files` 返回的对象里通常会有 `url`
-   - 脚本直接拿这个 URL 下载二进制内容
-
-2. **HTML 正文中的文件链接**
-   - 公告、assignment、page、discussion、syllabus 里可能嵌入 `<a href=\"...\">`
-   - 脚本会先提取 href
-   - 如果是 Canvas 文件页而不是最终下载链接，会进一步解析成 `/download...` 链接后再下载
-
-也就是说，当前脚本不仅扫“文件列表”，还会扫“正文里挂的资料链接”。
-
-### 分页规则
-
-Canvas 列表接口常见分页；这个 skill 的 `CanvasClient.paged(...)` 用法是：
-
-- 请求时尽量带 `per_page=100`
-- 读取响应头 `Link`
-- 如果有 `rel=\"next\"`，继续抓下一页
-
-如果你后面扩展新接口，也应该沿用这个模式。
-
-### 常用扩展接口
-
-当前同步脚本没直接用到，但如果你要把它继续扩展成“查询型 + 同步型”混合 skill，推荐沿用这些接口：
-
-- `GET /api/v1/users/self`
-- `GET /api/v1/users/self/todo`
-- `GET /api/v1/conversations`
-- `GET /api/v1/courses/:id/assignments/:aid/submissions/self`
-- `GET /api/v1/courses/:id/discussion_topics`
-- `GET /api/v1/calendar_events`
-
-### 建议的 API 扩展写法
-
-新增接口时建议统一复用当前脚本里的模式：
-
-1. 在 `CanvasClient.api_json()` 里走带认证的 GET
-2. 列表接口优先走 `CanvasClient.paged()`
-3. 需要下载文件时走 `download_binary()`
-4. 需要从正文 HTML 中找文件时，先提取链接，再解析真实下载地址
-
-更完整的接口说明可放在：
-
-- `references/canvas_api_usage.md`
-
-## PDF conversion
-
-If PDF conversion is enabled, the script tries to convert supported files after download.
-
-Currently supported best:
-- Windows Office documents via PowerShell COM automation for `docx` / `pptx`
-- `ipynb` via `jupyter nbconvert` if available
-
-If conversion fails, the original file is kept.
-
-## Classification behavior
-
-The classifier uses:
-1. source context
-2. filename/title heuristics
-3. extracted text from supported file types
-4. optional OpenAI classification when enabled
-
-Prefer tutorial-like folders for:
-- tutorials
-- labs
-- exercises
-- homework sheets
-- assignment questions
-
-Prefer lecture-like folders for:
-- lecture slides
-- chapter notes
-- topic notes
-- week notes

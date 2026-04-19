@@ -1,0 +1,8 @@
+﻿This package was sanitized before export.
+Removed/excluded:
+- local backup directories
+- __pycache__ and .pyc files
+Redacted/generalized:
+- user-specific absolute paths
+- site-specific example URL values
+No local config or access token is included in this package.

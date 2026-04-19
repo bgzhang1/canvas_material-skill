@@ -1,354 +1,250 @@
 # canvas_material
 
-> 一个以 **对话驱动** 为核心使用方式的 Canvas 资料同步 skill。
+一个以 **对话驱动** 为核心的 Canvas 资料下载与整理 skill。
 
-你不需要记命令。  
-你只需要像和 AI 助手说话一样，直接描述你的目标，`canvas_material` 会负责：
+当前版本的工作流已经改成：
 
-- **首次对话设置 Canvas Base URL 和 API Key**
-- **首次全量扫描**
-- **后续增量更新**
-- **资料分类整理**
-- **可选 PDF 转换**
-- **可选定时同步**
+1. 首次启动时，在对话中询问用户 `baseurl` 和 `key`
+2. 把它们保存到**下载目录**里的 config
+3. 首次更新时，先列出课程与学期
+4. 再询问用户：
+   - 下载哪个学期
+   - 是否转换 PDF
+   - 分类方式是什么
+5. 然后按课程逐个：
+   - 下载资料
+   - 按需转 PDF
+   - 读取课程目录文件
+   - 分类并移动文件
 
 ---
 
-## 这个 skill 的正确打开方式
+## 核心原则
 
-这个仓库的重点不是让用户手动执行一堆 CLI 命令，而是：
+这个 skill 是给 AI 助手在对话中调用的，不是让用户手动串所有命令。
 
-1. **安装 skill**
-2. **直接和 AI 对话**
-3. **让 AI 理解你的需求并完成同步**
-
-也就是说，推荐你说：
+推荐的使用方式是：
 
 ```text
 帮我初始化 canvas_material
 ```
 
-而不是优先自己敲：
-
-```text
-python scripts/canvas_material_sync.py setup
-```
-
-脚本依然存在，但属于**实现层**，不是 README 的主入口。
-
----
-
-## 一句话安装
-
-你可以直接对支持 skill / agent 工作流的 AI 说：
-
-```text
-请把这个仓库安装成名为 canvas_material 的本地 skill：
-https://github.com/bgzhang1/canvas_material-skill
-```
-
-安装完成后，你后续直接通过自然语言调用它即可。
-
----
-
-## 你只需要对 AI 说什么
-
-下面是这个 skill 推荐的使用方式。
-
-### 1. 首次初始化
-
-你可以直接说：
-
-```text
-帮我初始化 canvas_material
-```
-
-或者一次性把关键信息说完整：
-
-```text
-帮我初始化 canvas_material：
-- Canvas Base URL 是 https://cityu-dg.instructure.com
-- Canvas API Key 是 <你的 token>
-- 输出目录放到 C:\Users\BGZHANG\Desktop\zip\canvas_materials
-- 开启 PDF 转换
-- 不开定时
-- 分类用 lecture 和 tutorial
-```
-
-此时模型应继续在对话里确认必要信息，例如：
-
-- Canvas Base URL 是什么
-- Canvas API Key / Access Token 是什么
-- 是否开启 PDF 转换
-- 是否开启定时同步
-- 如果开启，想怎么定时
-- 分类文件夹有哪些
-
-如果信息已经说全，模型应直接进入初始化流程，而不是反复追问。
-
-> 第一次使用时，**Base URL 和 Key 应通过对话设置**，而不是要求用户先手动配置环境变量。
-
----
-
-### 2. 首次同步
-
-初始化完成后，模型应自动完成首次全量扫描。  
-你也可以直接这样说：
-
-```text
-初始化后立刻同步一次
-```
-
 或：
 
 ```text
-帮我做第一次全量下载
+帮我下载 Semester B 2025/26 的 Canvas 资料，并按 lecture/tutorial 分类
 ```
-
-模型应完成：
-
-- 读取 Canvas 课程
-- 扫描常见资料来源
-- 下载资料
-- 自动分类到本地目录
-- 写入配置与状态文件
 
 ---
 
-### 3. 后续增量更新
+## 本地配置文件
 
-以后你不需要重新走初始化流程，只需要直接说：
-
-```text
-对 C:\Users\BGZHANG\Desktop\zip\canvas_materials 做一次增量更新
-```
-
-或者：
+默认把本地配置保存在下载目录：
 
 ```text
-帮我同步一下 Canvas 最新资料
+<download_root>/_canvas_material_sync_config.json
 ```
 
-或者：
-
-```text
-只更新 CS3103 和 CS3402
-```
-
-模型应基于已有配置和上次同步时间，自动完成增量更新，而不是要求你重新配置一遍。
-
----
-
-### 4. 改定时同步
-
-如果你希望自动同步，不需要自己写计划任务表达式，只要直接说：
-
-```text
-把这个资料目录改成每天 09:00 自动同步
-```
-
-或：
-
-```text
-改成每 30 分钟同步一次
-```
-
-或：
-
-```text
-改成每周一和周三 08:30 自动同步
-```
-
-模型应负责把自然语言里的时间描述解析成对应的定时任务配置。
-
----
-
-### 5. 关闭定时同步
-
-如果你不想继续自动同步，可以直接说：
-
-```text
-把这个目录的定时同步关掉
-```
-
-模型应更新配置，并取消或停用对应的计划任务。
-
----
-
-## 一个理想的对话流程
-
-### 场景一：首次接入
-
-用户：
-
-```text
-帮我初始化 canvas_material
-```
-
-模型：
-
-```text
-好的，我先确认几项：
-1. Canvas Base URL 是什么？
-2. Canvas API Key 是什么？
-3. 是否开启 PDF 转换？
-4. 是否开启定时同步？
-5. 如果开启，想怎么定时？
-6. 资料分成哪些分类目录？
-7. 输出目录放在哪里？
-```
-
-用户：
-
-```text
-Base URL 是 https://cityu-dg.instructure.com，API Key 是 <我的 token>，开启 PDF，不开定时，分类用 lecture 和 tutorial，输出到 C:\Users\BGZHANG\Desktop\zip\canvas_materials
-```
-
-模型随后应完成：
-
-- 初始化配置
-- 首次全量扫描
-- 下载资料
-- 自动分类
-- 写入状态文件
-
----
-
-### 场景二：后续更新
-
-用户：
-
-```text
-对 C:\Users\BGZHANG\Desktop\zip\canvas_materials 做一次增量更新
-```
-
-模型随后应完成：
-
-- 读取已有配置
-- 根据上次同步时间确定增量基线
-- 扫描 Canvas 新动作
-- 下载新增或变更资料
-- 刷新状态文件和最后更新时间
-
----
-
-### 场景三：修改同步频率
-
-用户：
-
-```text
-把这个资料目录改成每天早上 9 点同步
-```
-
-模型随后应完成：
-
-- 解析时间表达
-- 更新定时配置
-- 安装或刷新计划任务
-
----
-
-## 这个 skill 会扫描哪些地方
-
-当前主要覆盖这些 Canvas 资料来源：
-
-- `course files`
-- `announcements`
-- `assignment descriptions`
-- `syllabus`
-- `front page`
-- `pages`
-- `discussions`
-- `modules / module items`
-
-也就是说，模型在执行同步时，不只是看课程文件区，还会检查正文里嵌入的附件或下载链接。
-
----
-
-## 状态文件是怎么用的
-
-这个 skill 会在输出目录中保存可复用状态：
-
-- `_canvas_material_sync_config.json`
-- `_canvas_material_sync_state.json`
-- `_canvas_material_sync_last_update.txt`
-
-作用分别是：
-
-- `config`：保存同步设置
-- `state`：保存已下载资料和同步状态
-- `last_update`：保存最后一次成功同步的时间
-
-其中 `config` 还可以保存首次对话中设置的：
+建议保存的字段：
 
 - `canvas_url`
 - `canvas_token`
-
-因此模型在后续对话中应该能够：
-
-- 识别这是一个已经初始化过的目录
-- 直接继续增量更新
-- 不要求用户重新填写全部参数
+- `output_root`
+- `selected_term`
+- `pdf_convert`
+- `category_folders`
 
 ---
 
-## 环境与认证
+## 当前脚本
 
-这个 skill 使用 Canvas REST API。
+### 1. 列出课程与学期
 
-基础形式：
-
-```text
-<CANVAS_URL>/api/v1/<endpoint>
-Authorization: Bearer <CANVAS_TOKEN>
+```powershell
+python scripts/list_courses.py
+python scripts/list_courses.py --term "Semester B 2025/26"
+python scripts/list_courses.py --json
 ```
 
-对普通用户来说，推荐的交互方式应当是：
+输出：
 
-- 第一次使用时，用户直接在对话里告诉模型 Canvas Base URL 和 API Key
-- 模型把这些信息保存到本地配置中，供后续同步复用
-- 如果环境变量已存在，模型也可以直接复用它们
-- 用户不需要每次手动回忆底层 API 调用方式
+- 课程编号
+- 学期
+- 课程名称
 
-> 提醒：`canvas_token` 属于敏感信息，只应保存在本地生成的配置中，不要提交到公开仓库。
+---
 
-如果你是维护者或要做二次开发，可以再去看：
+### 2. 按课程编号下载该课程可发现的资料链接
+
+```powershell
+python scripts/download_course_links.py 560
+python scripts/download_course_links.py 560 --dry-run
+python scripts/download_course_links.py 560 --json
+```
+
+来源覆盖：
+
+- course files
+- announcements
+- assignment descriptions
+- syllabus
+- front page
+- pages
+- discussions
+- modules / module items
+
+下载到：
+
+```text
+<output_root>/<course_name>/
+```
+
+---
+
+### 3. 转 PDF
+
+```powershell
+python scripts/convert_to_pdf.py "C:\path\course_dir" --recursive
+python scripts/convert_to_pdf.py "C:\path\course_dir" --recursive --json
+```
+
+支持常见 Office 文件：
+
+- doc / docx
+- ppt / pptx
+- xls / xlsx
+- 以及部分兼容格式
+
+后端：
+
+- `auto`
+- `office`
+- `libreoffice`
+
+---
+
+### 4. 列出课程目录下所有文件
+
+```powershell
+python scripts/list_course_files.py "C:\path\course_dir" --relative
+python scripts/list_course_files.py "C:\path\course_dir" --json
+```
+
+输出：
+
+- 文件名
+- 所在目录
+- 路径
+
+---
+
+### 5. 批量移动文件
+
+```powershell
+python scripts/move_files.py "C:\src" "C:\dst" --recursive
+python scripts/move_files.py "C:\src" "C:\dst" --pattern "*.pdf" --recursive
+python scripts/move_files.py "C:\src" "C:\dst" --recursive --dry-run
+```
+
+支持：
+
+- 按 pattern 筛选
+- 递归
+- 保留目录结构
+- 预览移动结果
+
+---
+
+## 推荐工作流
+
+### 首次启动
+
+AI 应先问：
+
+1. Canvas Base URL
+2. Canvas API Key
+
+然后把它们写入下载目录 config。
+
+---
+
+### 首次更新
+
+#### 第一步：列出课程与学期
+
+AI 调用：
+
+```powershell
+python scripts/list_courses.py
+```
+
+然后继续问用户：
+
+1. 要下载哪个学期
+2. 是否转换 PDF
+3. 分类方式是什么（默认 `lecture` / `tutorial`）
+
+并把这些偏好写入 config。
+
+#### 第二步：逐课程下载
+
+AI 对选中学期的课程逐个调用：
+
+```powershell
+python scripts/download_course_links.py <course_id>
+```
+
+#### 第三步：每门课下载后按需转 PDF
+
+如果 config 里 `pdf_convert = true`，就调用：
+
+```powershell
+python scripts/convert_to_pdf.py "<course_dir>" --recursive
+```
+
+#### 第四步：每门课下载后分类整理
+
+AI 先读取课程目录文件：
+
+```powershell
+python scripts/list_course_files.py "<course_dir>" --relative --json
+```
+
+再根据文件名和用户选择的分类方式，调用：
+
+```powershell
+python scripts/move_files.py ...
+```
+
+完成整理。
+
+---
+
+## 对话驱动要求
+
+这个 skill 不是单轮黑盒执行，而是要多轮参与：
+
+1. 先问连接信息
+2. 再问下载学期 / PDF / 分类方式
+3. 然后逐课程推进
+4. 每门课完成后都汇报进度
+
+AI 在使用这个 skill 时，应优先说：
+
+- “我先帮你读取课程和学期”
+- “你想下载哪个学期？”
+- “这次要不要自动转 PDF？”
+- “分类还是用默认的 `lecture` 和 `tutorial` 吗？”
+- “我现在开始逐门课下载”
+
+而不是把所有内部命令直接甩给用户。
+
+---
+
+## 说明
+
+如果你是维护者，完整行为规范请看：
 
 - `SKILL.md`
-- `references/canvas_api_usage.md`
 
----
-
-## 仓库结构
-
-```text
-canvas_material-skill/
-├─ agents/
-│  └─ openai.yaml
-├─ references/
-│  └─ canvas_api_usage.md
-├─ scripts/
-│  ├─ canvas_material_sync.py
-│  └─ canvas_material_sync_pkg/
-├─ LICENSE
-├─ README.md
-├─ SKILL.md
-└─ rules.json
-```
-
----
-
-## 面向维护者的要求
-
-如果你在维护这个 skill，请优先保证：
-
-1. README 明确把 **对话驱动** 作为主要入口
-2. `SKILL.md` 与 README 的交互方式一致
-3. 脚本只作为底层实现，不把 CLI 暴露成主要使用方式
-4. 模型可以基于已有配置完成增量更新和定时调整
-
----
-
-## License
-
-MIT
+如果你是普通用户，只需要在对话里提出目标即可。
