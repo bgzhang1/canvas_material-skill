@@ -1,8 +1,8 @@
-# canvas_material
+﻿# canvas_material
 
 一个以 **对话驱动** 为核心的 Canvas 资料下载与整理 skill。
 
-当前版本的工作流已经改成：
+当前版本的工作流：
 
 1. 首次启动时，在对话中询问用户 `baseurl` 和 `key`
 2. 把它们保存到**下载目录**里的 config
@@ -16,6 +16,8 @@
    - 按需转 PDF
    - 读取课程目录文件
    - 分类并移动文件
+6. 每次更新（包括首次）完成后，将当前中国时间写入 config 的 `last_update_at`
+7. 增量更新时，默认使用 config 中的 `last_update_at` 作为起始时间
 
 ---
 
@@ -35,6 +37,12 @@
 帮我下载 Semester B 2025/26 的 Canvas 资料，并按 lecture/tutorial 分类
 ```
 
+或：
+
+```text
+帮我增量更新
+```
+
 ---
 
 ## 本地配置文件
@@ -51,8 +59,10 @@
 - `canvas_token`
 - `output_root`
 - `selected_term`
+- `selected_courses`
 - `pdf_convert`
 - `category_folders`
+- `last_update_at` — 最近一次更新完成的时间（中国时间 ISO 格式）
 
 ---
 
@@ -155,6 +165,32 @@ python scripts/move_files.py "C:\src" "C:\dst" --recursive --dry-run
 
 ---
 
+### 6. 增量更新
+
+```powershell
+# 指定时间
+python scripts/incremental_update.py 560 500 --since 2026-04-19T10:00:00 --config .\canvas_materials\_canvas_material_sync_config.json
+
+# 使用 config 中保存的上次更新时间
+python scripts/incremental_update.py 560 500 --since last_update --config .\canvas_materials\_canvas_material_sync_config.json
+
+# 只预览不下载
+python scripts/incremental_update.py 560 500 --since last_update --dry-run --json
+```
+
+获取指定时间之后的 Canvas 新动作：
+
+- 新公告
+- 新作业
+- 新文件
+- 新页面/讨论/模块中的资料链接
+
+并下载到对应课程名称目录下。
+
+完成后自动将当前中国时间写入 config 的 `last_update_at`。
+
+---
+
 ## 推荐工作流
 
 ### 首次启动
@@ -218,6 +254,26 @@ python scripts/move_files.py ...
 
 完成整理。
 
+#### 第五步：写入更新时间
+
+所有课程处理完成后，AI 将当前中国时间写入 config 的 `last_update_at`，供下次增量更新使用。
+
+---
+
+### 增量更新
+
+当用户说"增量更新"时：
+
+1. AI 读取 config 中的 `selected_courses` 和 `last_update_at`
+2. 调用：
+
+```powershell
+python scripts/incremental_update.py <course_ids> --since last_update --config <config_path>
+```
+
+3. 对新增文件按课程继续转 PDF 和分类整理
+4. 完成后更新 config 的 `last_update_at`
+
 ---
 
 ## 对话驱动要求
@@ -228,14 +284,16 @@ python scripts/move_files.py ...
 2. 再问下载学期 / PDF / 分类方式
 3. 然后逐课程推进
 4. 每门课完成后都汇报进度
+5. 增量更新时确认时间范围
 
 AI 在使用这个 skill 时，应优先说：
 
-- “我先帮你读取课程和学期”
-- “你想下载哪个学期？”
-- “这次要不要自动转 PDF？”
-- “分类还是用默认的 `lecture` 和 `tutorial` 吗？”
-- “我现在开始逐门课下载”
+- "我先帮你读取课程和学期"
+- "你想下载哪个学期？"
+- "这次要不要自动转 PDF？"
+- "分类还是用默认的 `lecture` 和 `tutorial` 吗？"
+- "我现在开始逐门课下载"
+- "我现在开始增量更新，从上次更新时间开始"
 
 而不是把所有内部命令直接甩给用户。
 
